@@ -19,13 +19,16 @@ namespace BookImport
             {
                 connection.Open();
                 OleDbDataReader reader = null;
-                OleDbCommand command = new OleDbCommand("SELECT * from  tblOcr", connection);
+                OleDbCommand command = new OleDbCommand("SELECT * from  tblOcr where filename like '%\\SPLCL-BOOK-00204\\2\\2.pdf%'", connection);
+
+                var userId = 1;
+                var confidentialityTypeId = 4;
 
                 var fi = new FileInfo(connection.DataSource);
                 reader = command.ExecuteReader();
                 while (reader.Read())
                 {
-                    Console.WriteLine($"{reader["Batch_number"]} : {reader["Volume"]} : {reader["Publication_Info"]} : {reader["Publication_Date"]} : {reader["Move_Class"]} : {reader["Filename"]} ");
+                    Console.WriteLine($"{reader["BatchId"]} : {reader["Volume"]} : {reader["Publication_Info"]} : {reader["Publication_Date"]} : {reader["Move_Class"]} : {reader["Filename"]} ");
                     string filename = fi.Directory + (string)reader["filename"];
                     using (var db = new BeholderContext())
                     {
@@ -34,24 +37,31 @@ namespace BookImport
                             MimeTypeId = 7,
                             FileName = reader["Publication_Info"].ToString(),
                             DocumentExtension = ".pdf",
+                            FileStreamID = Guid.NewGuid(),
                             ContextText = File.ReadAllBytes(filename)
                         };
                         var pub = new MediaPublished()
                         {
-                            MediaTypeId = 4,
-                            PublishedTypeId = 4,
+                            MediaTypeId = confidentialityTypeId,
+                            PublishedTypeId = confidentialityTypeId,
                             Name = reader["Publication_Info"].ToString(),
                             DatePublished = Convert.ToDateTime(reader["Publication_Date"].ToString()),
+                            DateReceived = Convert.ToDateTime(reader["Publication_Date"].ToString()),
                             MovementClassId = Convert.ToInt32(reader["Move_Class"]),
-                            ConfidentialityTypeId = 4,
-                            CreatedUserId = 1,
-                            ModifiedUserId = 1,
+                            ConfidentialityTypeId = confidentialityTypeId,
+                            CreatedUserId = userId,
+                            ModifiedUserId = userId,
+                            DateCreated = DateTime.Now,
+                            DateModified = DateTime.Now,
                             MediaPublishedContext = pubContext
                         };
+
                         db.MediaPublished.Add(pub);
                         db.SaveChanges();
+
+                        pubContext.MediaPublishedId = pub.Id;
+                        db.SaveChanges();
                     }
-                    //fullPath = fi.Directory + (string) reader["filename"];
                     Console.WriteLine($"Filepath: {fi.Directory + (string)reader["filename"]}");
                 }
             }

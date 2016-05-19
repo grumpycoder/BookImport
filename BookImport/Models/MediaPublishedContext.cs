@@ -9,7 +9,7 @@ namespace BookImport.Models
     {
         public int Id { get; set; }
 
-        public Guid FileStreamID { get; set; }
+        public Guid? FileStreamID { get; set; }
 
         public int MimeTypeId { get; set; }
 
@@ -22,5 +22,7 @@ namespace BookImport.Models
         public byte[] ContextText { get; set; }
 
         public int? MediaPublishedId { get; set; }
+
+        //public virtual MediaPublished MediaPublished { get; set; }
     }
 }

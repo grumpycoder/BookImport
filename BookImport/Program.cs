@@ -1,12 +1,9 @@
 ﻿using BookImport.Data;
 using BookImport.Models;
 using System;
-using System.Collections.Generic;
 using System.Data.OleDb;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Xml.XPath;
 
 namespace BookImport
 {
@@ -14,58 +11,74 @@ namespace BookImport
     {
         private static void Main(string[] args)
         {
-            string connString = @"Provider=Microsoft.JET.OLEDB.4.0;Data Source=C:\temp\book.1\index.mdb";
-            using (OleDbConnection connection = new OleDbConnection(connString))
+            //string connString = @"Provider=Microsoft.JET.OLEDB.4.0;Data Source=C:\temp\book.1\index.mdb";
+            Console.Write("Enter file path or exit to quit: ");
+            var path = Console.ReadLine();
+            //if (string.IsNullOrWhiteSpace(path))
+            //{
+            //    Console.WriteLine("No path specified");
+            //    Console.ReadLine();
+            //    Environment.Exit(0);
+            //}
+            do
             {
-                connection.Open();
-                OleDbDataReader reader = null;
-                OleDbCommand command = new OleDbCommand("SELECT * from  tblOcr where filename like '%\\SPLCL-BOOK-00204\\2\\2.pdf%'", connection);
-
-                var userId = 1;
-                var confidentialityTypeId = 4;
-
-                var fi = new FileInfo(connection.DataSource);
-                reader = command.ExecuteReader();
-                while (reader.Read())
+                string connString = $"Provider=Microsoft.JET.OLEDB.4.0;Data Source={path}\\index.mdb";
+                using (OleDbConnection connection = new OleDbConnection(connString))
                 {
-                    Console.WriteLine($"{reader["BatchId"]} : {reader["Volume"]} : {reader["Publication_Info"]} : {reader["Publication_Date"]} : {reader["Move_Class"]} : {reader["Filename"]} ");
-                    string filename = fi.Directory + (string)reader["filename"];
-                    using (var db = new BeholderContext())
+                    connection.Open();
+                    OleDbDataReader reader = null;
+                    //OleDbCommand command = new OleDbCommand("SELECT * from  tblOcr where filename like '%\\SPLCL-BOOK-00204\\2\\2.pdf%'", connection);
+                    OleDbCommand command = new OleDbCommand("SELECT * from  tblOcr", connection);
+
+                    var userId = 1;
+                    var confidentialityTypeId = 4;
+
+                    var fi = new FileInfo(connection.DataSource);
+                    reader = command.ExecuteReader();
+                    while (reader.Read())
                     {
-                        var pubContext = new MediaPublishedContext()
+                        Console.WriteLine(
+                            $"Creating {reader["Publication_Info"]} {reader["Volume"]} : {reader["Publication_Date"]}");
+                        string filename = fi.Directory + (string)reader["filename"];
+                        using (var db = new BeholderContext())
                         {
-                            MimeTypeId = 7,
-                            FileName = reader["Publication_Info"].ToString(),
-                            DocumentExtension = ".pdf",
-                            FileStreamID = Guid.NewGuid(),
-                            ContextText = File.ReadAllBytes(filename)
-                        };
-                        var pub = new MediaPublished()
-                        {
-                            MediaTypeId = confidentialityTypeId,
-                            PublishedTypeId = confidentialityTypeId,
-                            Name = reader["Publication_Info"].ToString(),
-                            DatePublished = Convert.ToDateTime(reader["Publication_Date"].ToString()),
-                            DateReceived = Convert.ToDateTime(reader["Publication_Date"].ToString()),
-                            MovementClassId = Convert.ToInt32(reader["Move_Class"]),
-                            ConfidentialityTypeId = confidentialityTypeId,
-                            CreatedUserId = userId,
-                            ModifiedUserId = userId,
-                            DateCreated = DateTime.Now,
-                            DateModified = DateTime.Now,
-                            MediaPublishedContext = pubContext
-                        };
+                            var pubContext = new MediaPublishedContext()
+                            {
+                                MimeTypeId = 7,
+                                FileName = reader["Publication_Info"].ToString(),
+                                DocumentExtension = ".pdf",
+                                FileStreamID = Guid.NewGuid(),
+                                ContextText = File.ReadAllBytes(filename)
+                            };
+                            DateTime PubDate;
+                            DateTime.TryParse(reader["Publication_Date"].ToString(), out PubDate);
+                            var pub = new MediaPublished()
+                            {
+                                MediaTypeId = confidentialityTypeId,
+                                PublishedTypeId = confidentialityTypeId,
+                                Name = reader["Publication_Info"].ToString(),
+                                DatePublished = Convert.ToDateTime(PubDate),
+                                DateReceived = Convert.ToDateTime(PubDate),
+                                MovementClassId = Convert.ToInt32(reader["Move_Class"]),
+                                ConfidentialityTypeId = confidentialityTypeId,
+                                CreatedUserId = userId,
+                                ModifiedUserId = userId,
+                                DateCreated = DateTime.Now,
+                                DateModified = DateTime.Now,
+                                MediaPublishedContext = pubContext
+                            };
 
-                        db.MediaPublished.Add(pub);
-                        db.SaveChanges();
+                            db.MediaPublished.Add(pub);
+                            db.SaveChanges();
 
-                        pubContext.MediaPublishedId = pub.Id;
-                        db.SaveChanges();
+                            pubContext.MediaPublishedId = pub.Id;
+                            db.SaveChanges();
+                        }
                     }
-                    Console.WriteLine($"Filepath: {fi.Directory + (string)reader["filename"]}");
                 }
-            }
-
+                Console.Write("Enter file path or exit to quit: ");
+                path = Console.ReadLine();
+            } while (path != "exit");
             Console.WriteLine("Finished");
             Console.ReadLine();
         }

@@ -37,42 +37,49 @@ namespace BookImport
                     reader = command.ExecuteReader();
                     while (reader.Read())
                     {
-                        Console.WriteLine(
-                            $"Creating {reader["Publication_Info"]} {reader["Volume"]} : {reader["Publication_Date"]}");
                         string filename = fi.Directory + (string)reader["filename"];
                         using (var db = new BeholderContext())
                         {
-                            var pubContext = new MediaPublishedContext()
+                            if (!File.Exists(filename))
                             {
-                                MimeTypeId = 7,
-                                FileName = reader["Publication_Info"].ToString(),
-                                DocumentExtension = ".pdf",
-                                FileStreamID = Guid.NewGuid(),
-                                ContextText = File.ReadAllBytes(filename)
-                            };
-                            DateTime PubDate;
-                            DateTime.TryParse(reader["Publication_Date"].ToString(), out PubDate);
-                            var pub = new MediaPublished()
+                                Console.WriteLine($"File missing {filename}");
+                            }
+                            else
                             {
-                                MediaTypeId = confidentialityTypeId,
-                                PublishedTypeId = confidentialityTypeId,
-                                Name = reader["Publication_Info"].ToString(),
-                                DatePublished = Convert.ToDateTime(PubDate),
-                                DateReceived = Convert.ToDateTime(PubDate),
-                                MovementClassId = Convert.ToInt32(reader["Move_Class"]),
-                                ConfidentialityTypeId = confidentialityTypeId,
-                                CreatedUserId = userId,
-                                ModifiedUserId = userId,
-                                DateCreated = DateTime.Now,
-                                DateModified = DateTime.Now,
-                                MediaPublishedContext = pubContext
-                            };
+                                Console.WriteLine(
+                                    $"Creating {reader["Publication_Info"]} {reader["Volume"]} : {reader["Publication_Date"]}");
+                                var pubContext = new MediaPublishedContext()
+                                {
+                                    MimeTypeId = 7,
+                                    FileName = reader["Publication_Info"].ToString(),
+                                    DocumentExtension = ".pdf",
+                                    FileStreamID = Guid.NewGuid(),
+                                    ContextText = File.ReadAllBytes(filename)
+                                };
+                                DateTime PubDate;
+                                DateTime.TryParse(reader["Publication_Date"].ToString(), out PubDate);
+                                var pub = new MediaPublished()
+                                {
+                                    MediaTypeId = confidentialityTypeId,
+                                    PublishedTypeId = confidentialityTypeId,
+                                    Name = reader["Publication_Info"].ToString(),
+                                    DatePublished = Convert.ToDateTime(PubDate),
+                                    DateReceived = Convert.ToDateTime(PubDate),
+                                    MovementClassId = Convert.ToInt32(reader["Move_Class"]),
+                                    ConfidentialityTypeId = confidentialityTypeId,
+                                    CreatedUserId = userId,
+                                    ModifiedUserId = userId,
+                                    DateCreated = DateTime.Now,
+                                    DateModified = DateTime.Now,
+                                    MediaPublishedContext = pubContext
+                                };
 
-                            db.MediaPublished.Add(pub);
-                            db.SaveChanges();
+                                db.MediaPublished.Add(pub);
+                                db.SaveChanges();
 
-                            pubContext.MediaPublishedId = pub.Id;
-                            db.SaveChanges();
+                                pubContext.MediaPublishedId = pub.Id;
+                                db.SaveChanges();
+                            }
                         }
                     }
                 }
